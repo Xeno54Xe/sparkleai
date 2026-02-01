@@ -1,360 +1,189 @@
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { Dimensions, ScrollView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
+import { PieChart } from 'react-native-gifted-charts';
+import { useTheme } from '../../context/ThemeContext';
+
+// Import your local master list
+import ALL_STOCKS_DATA from '../../assets/stocks.json';
+
+const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  
+  const [pieData, setPieData] = useState<any[]>([]);
+  const [watchlistCount, setWatchlistCount] = useState(0);
 
-  // Stock database - will be replaced with backend data later
-  const allStocks = [
-    { symbol: 'RELIANCE', name: 'Reliance Industries Ltd.' },
-    { symbol: 'TCS', name: 'Tata Consultancy Services' },
-    { symbol: 'INFY', name: 'Infosys Ltd.' },
-    { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd.' },
-    { symbol: 'TATAMOTORS', name: 'Tata Motors Ltd.' },
-    { symbol: 'ITC', name: 'ITC Ltd.' },
-    { symbol: 'WIPRO', name: 'Wipro Ltd.' },
-    { symbol: 'BAJFINANCE', name: 'Bajaj Finance Ltd.' },
-  ];
+  const colors = {
+    bg: isDark ? '#0F172A' : '#F8FAFC',
+    text: isDark ? '#F9FAFB' : '#1F2937',
+    subText: isDark ? '#9CA3AF' : '#6B7280',
+    border: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+    pill: isDark ? 'rgba(139, 92, 246, 0.2)' : '#EDE9FE',
+    pillText: isDark ? '#DDD6FE' : '#5B21B6',
+    chartColors: ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316']
+  };
 
-  // Filter stocks based on search query
-  const filteredStocks = allStocks.filter(stock => 
-    stock.symbol.toUpperCase().includes(searchQuery.toUpperCase()) ||
-    stock.name.toUpperCase().includes(searchQuery.toUpperCase())
+  // --- FULLY DYNAMIC LOGIC: Uses 'SERIES' for all 5000+ stocks ---
+  const calculateDiversity = async () => {
+    try {
+      const saved = await AsyncStorage.getItem('user_watchlist');
+      if (!saved) {
+        setPieData([]);
+        setWatchlistCount(0);
+        return;
+      }
+      const symbols: string[] = JSON.parse(saved);
+      setWatchlistCount(symbols.length);
+
+      const seriesCounts: { [key: string]: number } = {};
+      
+      symbols.forEach(sym => {
+        const stock = ALL_STOCKS_DATA.find(s => s["SYMBOL"] === sym);
+        // Map NSE Series codes to human-readable names
+        const rawSeries = stock ? stock["SERIES"] : "EQ";
+        let label = "Equity (EQ)";
+        
+        if (rawSeries === 'BE') label = 'Trade-to-Trade (BE)';
+        else if (rawSeries === 'SM') label = 'SME Equity';
+        else if (rawSeries === 'BZ') label = 'Non-Compliant (BZ)';
+        else if (rawSeries !== 'EQ') label = `Other (${rawSeries})`;
+
+        seriesCounts[label] = (seriesCounts[label] || 0) + 1;
+      });
+
+      const formattedData = Object.keys(seriesCounts).map((label, index) => ({
+        value: seriesCounts[label],
+        color: colors.chartColors[index % colors.chartColors.length],
+        label: label,
+        text: `${Math.round((seriesCounts[label] / symbols.length) * 100)}%`
+      }));
+      
+      setPieData(formattedData);
+    } catch (e) {
+      console.error("Diversity Calculation Error:", e);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      calculateDiversity();
+    }, [])
   );
 
   const handleSearch = (stock: string) => {
     setSearchQuery(stock);
     setShowDropdown(false);
-    // Navigate to analysis screen with stock name
     router.push(`/explore?stock=${stock}`);
   };
 
-  const handleInputChange = (text: string) => {
-    setSearchQuery(text.toUpperCase());
-    setShowDropdown(text.length > 0);
-  };
-
-  const selectStock = (symbol: string) => {
-    setSearchQuery(symbol);
-    setShowDropdown(false);
-  };
-
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: 'white' }}>
+    <View style={[styles.mainContainer, { backgroundColor: colors.bg }]}>
       <StatusBar barStyle="light-content" />
-      
-      {/* Header */}
-      <View style={{
-        backgroundColor: '#5B21B6',
-        borderBottomLeftRadius: 30,
-        borderBottomRightRadius: 30,
-        padding: 32,
-        paddingTop: 60,
-        paddingBottom: showDropdown ? 20 : 32
-      }}>
-        <Text style={{ fontSize: 32, fontWeight: 'bold', color: 'white', marginBottom: 4 }}>
-          स्वागत है!
-        </Text>
-        <Text style={{ fontSize: 24, fontWeight: '600', color: 'white', marginBottom: 8 }}>
-          Welcome to Sparkle AI
-        </Text>
-        <Text style={{ fontSize: 16, color: '#E9D5FF', marginBottom: 24 }}>
-          India's smartest stock advisor powered by AI
-        </Text>
-        
-        {/* Search Bar with Dropdown */}
-        <View style={{ position: 'relative', zIndex: 1000 }}>
-          <View style={{
-            backgroundColor: 'white',
-            borderRadius: 16,
-            padding: 16,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.1,
-            shadowRadius: 12,
-            elevation: 5
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-              <Text style={{ fontSize: 20, marginRight: 12 }}>🔍</Text>
-              <TextInput
-                style={{
-                  flex: 1,
-                  fontSize: 18,
-                  fontWeight: '500',
-                  color: '#1F2937'
-                }}
-                placeholder="Search any Indian stock..."
-                placeholderTextColor="#9CA3AF"
-                value={searchQuery}
-                onChangeText={handleInputChange}
-                autoCapitalize="characters"
-                onFocus={() => searchQuery.length > 0 && setShowDropdown(true)}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => {
-                  setSearchQuery('');
-                  setShowDropdown(false);
-                }}>
-                  <Text style={{ fontSize: 18, color: '#9CA3AF', paddingLeft: 8 }}>✕</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            {searchQuery.length > 0 && (
-              <TouchableOpacity
-                onPress={() => handleSearch(searchQuery)}
-                style={{
-                  backgroundColor: '#5B21B6',
-                  paddingVertical: 14,
-                  borderRadius: 12,
-                  alignItems: 'center'
-                }}
-              >
-                <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>
-                  Analyze {searchQuery}
-                </Text>
-              </TouchableOpacity>
-            )}
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        <LinearGradient colors={['#5B21B6', '#4C1D95']} style={styles.headerGradient}>
+          <Text style={styles.hindiGreeting}>स्वागत है!</Text>
+          <Text style={styles.englishGreeting}>Welcome to Sparkle AI</Text>
+          <Text style={styles.subGreeting}>stock advisor made by bitsians</Text>
+          
+          <View style={styles.glassSearchContainer}>
+            <BlurView intensity={isDark ? 40 : 80} tint={isDark ? "dark" : "light"} style={styles.blurWrapper}>
+              <View style={{ padding: 16, flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ fontSize: 20, marginRight: 12 }}>🔍</Text>
+                <TextInput
+                  style={[styles.textInput, { color: colors.text }]}
+                  placeholder="Search 5000+ stocks..."
+                  placeholderTextColor={colors.subText}
+                  value={searchQuery}
+                  onChangeText={(t) => { setSearchQuery(t.toUpperCase()); setShowDropdown(t.length > 0); }}
+                />
+              </View>
+            </BlurView>
           </View>
+        </LinearGradient>
 
-          {/* Dropdown Results */}
-          {showDropdown && filteredStocks.length > 0 && (
-            <View style={{
-              backgroundColor: 'white',
-              borderRadius: 16,
-              marginTop: 8,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 12,
-              elevation: 5,
-              maxHeight: 300
-            }}>
-              <ScrollView nestedScrollEnabled={true}>
-                {filteredStocks.map((stock, index) => (
-                  <TouchableOpacity
-                    key={stock.symbol}
-                    onPress={() => selectStock(stock.symbol)}
-                    style={{
-                      padding: 16,
-                      borderBottomWidth: index < filteredStocks.length - 1 ? 1 : 0,
-                      borderBottomColor: '#F3F4F6'
-                    }}
-                  >
-                    <Text style={{ 
-                      fontSize: 16, 
-                      fontWeight: 'bold', 
-                      color: '#1F2937',
-                      marginBottom: 2
-                    }}>
-                      {stock.symbol}
-                    </Text>
-                    <Text style={{ fontSize: 13, color: '#6B7280' }}>
-                      {stock.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+        <View style={{ padding: 20 }}>
+          {/* Watchlist Analytics Card */}
+          {pieData.length > 0 && (
+            <View style={styles.sectionGlassWrapper}>
+                <BlurView intensity={isDark ? 30 : 50} tint={isDark ? "dark" : "light"} style={styles.sectionPadding}>
+                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 16 }}>Your Watchlist Asset Distribution</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' }}>
+                        <PieChart
+                            data={pieData}
+                            donut
+                            radius={70}
+                            innerRadius={45}
+                            focusOnPress
+                            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                            innerCircleColor={isDark ? "#1E293B" : "#FFFFFF"}
+                            centerLabelComponent={() => (
+                                <View style={{ alignItems: 'center' }}>
+                                    <Text style={{ fontSize: 16, color: colors.text, fontWeight: 'bold' }}>{watchlistCount}</Text>
+                                    <Text style={{ fontSize: 9, color: colors.subText }}>Stocks</Text>
+                                </View>
+                            )}
+                        />
+                        <View style={{ marginLeft: 15, flex: 1 }}>
+                            {pieData.map((item, index) => (
+                                <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: item.color, marginRight: 8 }} />
+                                    <Text style={{ fontSize: 11, color: colors.text }} numberOfLines={1}>{item.label}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+                </BlurView>
             </View>
           )}
 
-          {/* No results message */}
-          {showDropdown && searchQuery.length > 0 && filteredStocks.length === 0 && (
-            <View style={{
-              backgroundColor: 'white',
-              borderRadius: 16,
-              marginTop: 8,
-              padding: 20,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 12,
-              elevation: 5,
-              alignItems: 'center'
-            }}>
-              <Text style={{ fontSize: 16, color: '#6B7280' }}>
-                No stocks found for "{searchQuery}"
-              </Text>
-              <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
-                Try searching for: RELIANCE, TCS, INFY
-              </Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Content Section */}
-      <View style={{ padding: 20 }}>
-        {/* Popular Searches */}
-        <View style={{
-          backgroundColor: 'white',
-          borderRadius: 20,
-          padding: 20,
-          borderWidth: 1,
-          borderColor: '#E5E7EB',
-          marginBottom: 16,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.05,
-          shadowRadius: 8,
-          elevation: 2
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-            <Text style={{ fontSize: 20, marginRight: 8 }}>📈</Text>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937' }}>
-              Popular Searches
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-            {allStocks.slice(0, 8).map((stock) => (
-              <TouchableOpacity
-                key={stock.symbol}
-                onPress={() => handleSearch(stock.symbol)}
-                style={{
-                  backgroundColor: '#EDE9FE',
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 12,
-                  marginRight: 8,
-                  marginBottom: 8
-                }}
-              >
-                <Text style={{ color: '#5B21B6', fontWeight: '600' }}>
-                  {stock.symbol}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          {/* Sparkle Intelligence Steps */}
+          <View style={styles.sectionGlassWrapper}>
+            <BlurView intensity={isDark ? 15 : 30} tint={isDark ? "dark" : "light"} style={styles.sectionPadding}>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 20 }}>Intelligence 🧠</Text>
+              {[
+                { n: 1, t: "Real-Time Data", d: "Tracking 5000+ NSE stocks instantly." },
+                { n: 2, t: "Pattern Recognition", d: "AI identifying overbought/oversold levels." },
+                { n: 3, t: "Simple Advice", d: "Converting data into clear Buy/Sell signals." }
+              ].map(step => (
+                <View key={step.n} style={styles.stepContainer}>
+                  <View style={styles.stepCircle}><Text style={styles.stepNumber}>{step.n}</Text></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.stepTitle, { color: colors.text }]}>{step.t}</Text>
+                    <Text style={[styles.stepDesc, { color: colors.subText }]}>{step.d}</Text>
+                  </View>
+                </View>
+              ))}
+            </BlurView>
           </View>
         </View>
-
-        {/* Info Cards */}
-        <View style={{ flexDirection: 'row', marginBottom: 16, justifyContent: 'space-between' }}>
-          <View style={{
-            flex: 1,
-            backgroundColor: 'white',
-            borderRadius: 16,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: '#E5E7EB',
-            alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.05,
-            shadowRadius: 8,
-            elevation: 2,
-            marginRight: 8
-          }}>
-            <Text style={{ fontSize: 32, marginBottom: 8 }}>🎯</Text>
-            <Text style={{ fontSize: 12, color: '#6B7280', fontWeight: '500', textAlign: 'center' }}>
-              AI-Powered
-            </Text>
-          </View>
-          <View style={{
-            flex: 1,
-            backgroundColor: 'white',
-            borderRadius: 16,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: '#E5E7EB',
-            alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.05,
-            shadowRadius: 8,
-            elevation: 2,
-            marginRight: 8
-          }}>
-            <Text style={{ fontSize: 32, marginBottom: 8 }}>📊</Text>
-            <Text style={{ fontSize: 12, color: '#6B7280', fontWeight: '500', textAlign: 'center' }}>
-              Real Data
-            </Text>
-          </View>
-          <View style={{
-            flex: 1,
-            backgroundColor: 'white',
-            borderRadius: 16,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: '#E5E7EB',
-            alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.05,
-            shadowRadius: 8,
-            elevation: 2
-          }}>
-            <Text style={{ fontSize: 32, marginBottom: 8 }}>🇮🇳</Text>
-            <Text style={{ fontSize: 12, color: '#6B7280', fontWeight: '500', textAlign: 'center' }}>
-              Indian Markets
-            </Text>
-          </View>
-        </View>
-
-        {/* How it works */}
-        <View style={{
-          backgroundColor: '#F3E8FF',
-          borderRadius: 20,
-          padding: 20,
-          borderWidth: 1,
-          borderColor: '#DDD6FE'
-        }}>
-          <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937', marginBottom: 16 }}>
-            How Sparkle AI Works
-          </Text>
-          <View>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
-              <View style={{
-                width: 24,
-                height: 24,
-                backgroundColor: '#5B21B6',
-                borderRadius: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 12
-              }}>
-                <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>1</Text>
-              </View>
-              <Text style={{ flex: 1, color: '#374151', fontSize: 14, lineHeight: 20 }}>
-                Search for any NSE/BSE listed stock
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
-              <View style={{
-                width: 24,
-                height: 24,
-                backgroundColor: '#5B21B6',
-                borderRadius: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 12
-              }}>
-                <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>2</Text>
-              </View>
-              <Text style={{ flex: 1, color: '#374151', fontSize: 14, lineHeight: 20 }}>
-                AI analyzes sentiment, financials, and trends
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-              <View style={{
-                width: 24,
-                height: 24,
-                backgroundColor: '#5B21B6',
-                borderRadius: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 12
-              }}>
-                <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>3</Text>
-              </View>
-              <Text style={{ flex: 1, color: '#374151', fontSize: 14, lineHeight: 20 }}>
-                Get clear Buy/Sell/Hold advice with confidence score
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  mainContainer: { flex: 1 },
+  headerGradient: { borderBottomLeftRadius: 32, borderBottomRightRadius: 32, padding: 32, paddingTop: 60, paddingBottom: 40 },
+  hindiGreeting: { fontSize: 32, fontWeight: 'bold', color: 'white', marginBottom: 4 },
+  englishGreeting: { fontSize: 22, fontWeight: '600', color: 'white', marginBottom: 8 },
+  subGreeting: { fontSize: 14, color: '#E9D5FF', marginBottom: 24 },
+  glassSearchContainer: { borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  blurWrapper: { flex: 1 },
+  textInput: { flex: 1, fontSize: 18, fontWeight: '500' },
+  sectionGlassWrapper: { borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', marginBottom: 16 },
+  sectionPadding: { padding: 20 },
+  stepContainer: { flexDirection: 'row', marginBottom: 20 },
+  stepCircle: { width: 28, height: 28, backgroundColor: '#5B21B6', borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+  stepNumber: { color: 'white', fontWeight: 'bold' },
+  stepTitle: { fontSize: 16, fontWeight: 'bold' },
+  stepDesc: { fontSize: 13 }
+});
