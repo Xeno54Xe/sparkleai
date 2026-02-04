@@ -3,6 +3,7 @@
     "name": "sparkle-ai",
     "slug": "sparkle-ai",
     "version": "1.0.0",
+    "owner": "vanshdhillon",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "sparkleai",

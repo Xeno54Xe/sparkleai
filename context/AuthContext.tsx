@@ -67,20 +67,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // The useEffect above will handle the redirect to /(tabs)
   };
 
-  // 4. Logout Function (With History Reset)
+  // 4. Logout Function (With Stack Reset)
   const signOut = async () => {
     try {
-      // Clear data
+      // A. Clear State immediately so UI reacts
       setUser(null);
+      
+      // B. Clear Storage
       await AsyncStorage.removeItem('user');
       
-      // Force navigation reset to ensure back button doesn't work
-      setTimeout(() => {
-        if (router.canDismiss()) {
-          router.dismissAll();
-        }
-        router.replace('/');
-      }, 0);
+      // C. Force Navigation Reset
+      // This ensures the back button doesn't take you back to the profile
+      if (router.canDismiss()) {
+        router.dismissAll();
+      }
+      router.replace('/');
       
     } catch (error) {
       console.error("Error signing out:", error);
