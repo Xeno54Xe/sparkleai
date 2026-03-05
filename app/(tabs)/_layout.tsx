@@ -1,37 +1,25 @@
+import { HapticTab } from '@/components/haptic-tab';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform, Text } from 'react-native';
-import { useTheme } from '../../context/ThemeContext'; // Import Theme Hook
+import { Platform } from 'react-native';
+import { useTheme } from '../../context/ThemeContext'; // Ensure correct import path
 
 export default function TabLayout() {
-  const { isDark } = useTheme(); // Check theme status
-
-  // --- DYNAMIC THEME COLORS ---
-  const barBg = isDark ? '#111827' : '#FFFFFF';        // Dark Gray vs White
-  const border = isDark ? '#1F2937' : '#E5E7EB';       // Border color
-  const activeTint = isDark ? '#A78BFA' : '#5B21B6';   // Neon Purple vs Dark Purple
-  const inactiveTint = isDark ? '#6B7280' : '#9CA3AF'; // Gray for inactive
+  const { isDark } = useTheme();
 
   return (
     <Tabs
       screenOptions={{
+        tabBarActiveTintColor: '#6366F1', // Indigo Accent
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: barBg,
-          borderTopWidth: 1,
-          borderTopColor: border,
-          height: Platform.OS === 'android' ? 70 : 90,
-          paddingBottom: Platform.OS === 'android' ? 12 : 30,
-          paddingTop: 12,
-          elevation: 0,
-        },
-        tabBarActiveTintColor: activeTint,
-        tabBarInactiveTintColor: inactiveTint,
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-          marginTop: 4,
-        },
+        tabBarButton: HapticTab,
+        tabBarBackground: TabBarBackground,
+        tabBarStyle: Platform.select({
+          ios: { position: 'absolute' },
+          default: {},
+        }),
       }}>
       
       {/* 1. HOME TAB */}
@@ -39,42 +27,51 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 24, color: color }}>🏠</Text>
-          ),
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
         }}
       />
 
-      {/* 2. TRADE TAB (New Real-time Graph) */}
+      {/* 2. NEW SEARCH TAB */}
+      <Tabs.Screen
+        name="search"
+        options={{
+          title: 'Search',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="magnifyingglass" color={color} />,
+        }}
+      />
+
+      {/* 3. TRADE TAB */}
       <Tabs.Screen
         name="trade"
         options={{
           title: 'Trade',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 24, color: color }}>📈</Text>
-          ),
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
         }}
       />
 
-      {/* 3. ANALYZE TAB (Explore) */}
+      {/* 4. EXPLORE TAB (Hidden, used for details) */}
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Analyze',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 24, color: color }}>🤖</Text>
-          ),
+          href: null, // Hides it from the bottom bar
         }}
       />
 
-      {/* 4. PROFILE TAB */}
+      {/* 5. WATCHLIST TAB */}
+      <Tabs.Screen
+        name="watchlist"
+        options={{
+          title: 'Watchlist',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="star.fill" color={color} />,
+        }}
+      />
+
+      {/* 6. PROFILE TAB */}
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 24, color: color }}>👤</Text>
-          ),
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
         }}
       />
     </Tabs>
