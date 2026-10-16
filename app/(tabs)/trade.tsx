@@ -4,13 +4,13 @@ import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
+import { API_URL } from '../../constants/api';
 import { useTheme } from '../../context/ThemeContext';
 
 // IMPORT LOCAL JSON DATA
 import ALL_STOCKS from '../../assets/stocks.json';
 
 const { width } = Dimensions.get('window');
-const API_URL = 'http://172.17.107.124:5000'; 
 
 export default function TradeScreen() {
   const { isDark } = useTheme();
@@ -22,6 +22,8 @@ export default function TradeScreen() {
   const [selectedRange, setSelectedRange] = useState('1D');
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const requestId = useRef(0);
 
   // Real Data State
   const [price, setPrice] = useState('...');
@@ -62,11 +64,14 @@ export default function TradeScreen() {
             };
           });
           setUserWatchlist(fullList);
-          if (!selectedStock && fullList.length > 0) {
-            setSelectedStock(fullList[0]);
+          // Pick the first stock if nothing is selected, or if the selected one was removed from the watchlist
+          const stillListed = selectedStock && fullList.some((s: any) => s.symbol === selectedStock.symbol);
+          if (!stillListed) {
+            setSelectedStock(fullList.length > 0 ? fullList[0] : null);
           }
         } else {
           setUserWatchlist([]);
+          setSelectedStock(null);
         }
       };
       loadWatchlist();
@@ -132,12 +137,20 @@ export default function TradeScreen() {
 
   const fetchStockData = async () => {
     if (!selectedStock) return;
+    const thisRequest = ++requestId.current;
     setLoading(true);
+    setError(null);
     updateMarketStatus();
     try {
-      const response = await fetch(`${API_URL}/stock?symbol=${selectedStock.symbol}&range=${selectedRange}`);
+      const response = await fetch(`${API_URL}/stock?symbol=${encodeURIComponent(selectedStock.symbol)}&range=${selectedRange}`);
       const data = await response.json();
-      if (data.error) { return; }
+      // Ignore responses for a stock/range the user has already switched away from
+      if (thisRequest !== requestId.current) return;
+      if (data.error) {
+        setError(data.error);
+        setPrice('—'); setChange(''); setStats([]); setCurrentData([]);
+        return;
+      }
 
       setPrice(data.price);
       setChange(data.change_percent);
@@ -158,7 +171,14 @@ export default function TradeScreen() {
         setCurrentData(cleanLabels(data.graph_data, selectedRange));
         setStockModeKey(prev => prev + 1); 
       }
-    } catch (error) { console.error("Fetch Error:", error); } finally { setLoading(false); }
+    } catch (err) {
+      if (thisRequest !== requestId.current) return;
+      console.error("Fetch Error:", err);
+      setError(`Can't reach the stock server at ${API_URL}. Is backend/server.py running?`);
+      setPrice('—'); setChange(''); setStats([]); setCurrentData([]);
+    } finally {
+      if (thisRequest === requestId.current) setLoading(false);
+    }
   };
 
   useEffect(() => { fetchStockData(); }, [selectedStock, selectedRange]);
@@ -256,13 +276,15 @@ export default function TradeScreen() {
         {/* 3. CHART AREA */}
         <View style={{ flexDirection: 'row', height: 380, width: width, paddingRight: 10, zIndex: -1 }}>
           <View style={{ flex: 1, justifyContent: 'center' }}>
-            {loading && currentData.length === 0 ? (
+            {error ? (
+               <View style={{ alignItems: 'center', justifyContent: 'center', height: 300, paddingHorizontal: 30 }}><Text style={{ color: '#EF4444', textAlign: 'center' }}>{error}</Text></View>
+            ) : loading && currentData.length === 0 ? (
                <View style={{ alignItems: 'center', justifyContent: 'center', height: 300 }}><ActivityIndicator size="large" color="#10B981" /></View>
             ) : selectedStock ? (
               <View style={{ height: 380 }}> 
                   <LineChart
                       key={`chart-${stockModeKey}`} 
-                      areaChart data={currentData} height={300} width={width - 80} scrollable spacing={selectedRange === '1D' ? 40 : 30} initialSpacing={10} scrollToEnd
+                      areaChart data={currentData} height={300} width={width - 80} spacing={selectedRange === '1D' ? 40 : 30} initialSpacing={10} scrollToEnd
                       animationDuration={0} animateOnDataChange={false} yAxisOffset={yAxisOffset} maxValue={maxValue}
                       color={isPositive ? '#10B981' : '#EF4444'} thickness={2} startFillColor={isPositive ? '#10B981' : '#EF4444'} endFillColor={isPositive ? '#10B981' : '#EF4444'} startOpacity={0.2} endOpacity={0.0}
                       showVerticalLines={false} xAxisThickness={0} hideYAxisText={false} yAxisLabelWidth={45} 

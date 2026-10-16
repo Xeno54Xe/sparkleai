@@ -146,9 +146,9 @@ export default function HomeScreen() {
                 </View>
               </View>
               {[
-                { symbol: 'ZOMATO', activity: 'High 🔥', sentiment: 'Bullish', rank: 1, sentColor: colors.success, bg: 'rgba(16, 185, 129, 0.1)' },
+                { symbol: 'ETERNAL', activity: 'High 🔥', sentiment: 'Bullish', rank: 1, sentColor: colors.success, bg: 'rgba(16, 185, 129, 0.1)' },
                 { symbol: 'SUZLON', activity: 'Volatile ⚡', sentiment: 'Caution', rank: 2, sentColor: colors.warning, bg: 'rgba(245, 158, 11, 0.1)' },
-                { symbol: 'TATAMOTORS', activity: 'Steady ⚖️', sentiment: 'Hold', rank: 3, sentColor: colors.text, bg: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' },
+                { symbol: 'TMPV', activity: 'Steady ⚖️', sentiment: 'Hold', rank: 3, sentColor: colors.text, bg: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' },
               ].map((item, index) => (
                 <TouchableOpacity 
                   key={item.symbol} 

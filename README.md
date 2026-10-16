@@ -1,3 +1,28 @@
+# Sparkle AI
+
+AI-assisted stock research app for Indian (NSE) beginners — Expo / React Native frontend + Flask backend.
+
+## Running locally
+
+Backend (live prices via yfinance, port 5001 — 5000 is taken by macOS AirPlay):
+
+```bash
+python3 -m venv backend/.venv && backend/.venv/bin/pip install -r backend/requirements.txt
+backend/.venv/bin/python backend/server.py
+```
+
+Frontend:
+
+```bash
+npm install
+npx expo start --web
+```
+
+The app finds the backend automatically (same host on web, the Metro host's LAN IP on a phone).
+Override with `EXPO_PUBLIC_API_URL=http://<ip>:5001` if needed.
+
+---
+
 # Welcome to your Expo app 👋
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).

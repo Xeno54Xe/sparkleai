@@ -26,6 +26,7 @@ export default function LoginScreen() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      if (!response.ok) throw new Error(`Google userinfo returned ${response.status}`);
       const user = await response.json();
       signIn(user); //
     } catch (error) {
