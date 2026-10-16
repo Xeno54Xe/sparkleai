@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import React from 'react';
-import { Alert, Image, Linking, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native'; // Added Image import
+import { Alert, Image, Linking, Platform, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -18,9 +17,13 @@ const TEAM_MEMBERS = [
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const router = useRouter();
 
   const handleLogout = () => {
+    // Alert.alert buttons are a no-op on web, so fall back to the browser's confirm dialog
+    if (Platform.OS === 'web') {
+      if (window.confirm("Are you sure you want to log out?")) signOut();
+      return;
+    }
     Alert.alert("Log Out", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
       { text: "Log Out", style: "destructive", onPress: () => signOut() }

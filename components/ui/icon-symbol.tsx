@@ -18,7 +18,10 @@ const MAPPING = {
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
-  'person.fill': 'person', // <--- THIS WAS THE MISSING LINE
+  'person.fill': 'person',
+  'magnifyingglass': 'search',
+  'chart.bar.fill': 'bar-chart',
+  'star.fill': 'star',
 } as IconMapping;
 
 /**

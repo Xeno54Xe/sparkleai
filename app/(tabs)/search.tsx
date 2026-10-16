@@ -43,7 +43,7 @@ export default function SearchScreen() {
     // 1. Text Search
     if (searchQuery) {
       const q = searchQuery.toUpperCase();
-      result = result.filter(s => s["SYMBOL"].includes(q) || s["NAME OF COMPANY"].includes(q));
+      result = result.filter(s => s["SYMBOL"].toUpperCase().includes(q) || s["NAME OF COMPANY"].toUpperCase().includes(q));
     }
 
     // 2. Category Filter (Using NSE SERIES codes)
@@ -53,12 +53,12 @@ export default function SearchScreen() {
 
     // 3. Price Filter (Simulated using 'PAID UP VALUE' as a placeholder for Price since JSON lacks it)
     // In a real app with price data, you would compare current_price here.
-    if (priceRange.min && priceRange.max) {
-      const min = parseFloat(priceRange.min);
-      const max = parseFloat(priceRange.max);
+    if (priceRange.min || priceRange.max) {
+      const min = parseFloat(priceRange.min) || 0;
+      const max = priceRange.max ? parseFloat(priceRange.max) : Infinity;
       // NOTE: Using PAID UP VALUE as a demo field. Replace with 'price' if available.
       result = result.filter(s => {
-        const val = parseFloat(s["PAID UP VALUE"] || "0");
+        const val = Number(s["PAID UP VALUE"]) || 0;
         return val >= min && val <= max;
       });
     }

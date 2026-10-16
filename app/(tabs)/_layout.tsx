@@ -9,10 +9,14 @@ import { useTheme } from '../../context/ThemeContext'; // Ensure correct import 
 export default function TabLayout() {
   const { isDark } = useTheme();
 
+  // Tab bar is themed via TabBarBackground (reads isDark itself); keep inactive icons readable in dark mode
   return (
     <Tabs
+      // "history" so Back from the hidden stock-detail tab returns to the tab you came from, not Home
+      backBehavior="history"
       screenOptions={{
         tabBarActiveTintColor: '#6366F1', // Indigo Accent
+        tabBarInactiveTintColor: isDark ? '#9CA3AF' : '#6B7280',
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,

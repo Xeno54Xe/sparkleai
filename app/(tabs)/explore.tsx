@@ -8,6 +8,7 @@ import TechnicalIndicatorHeatmap from '../../components/technical/TechnicalIndic
 import SentimentBar from '../../components/technical/SentimentBar';
 import CandlestickCard from '../../components/technical/CandlestickCard';
 import { calculateVerdict } from '../../components/technical/verdictCalculator';
+import { API_URL } from '../../constants/api';
 import { useTheme } from '../../context/ThemeContext';
 
 // ─── API CONFIG ─────────────────────────────────────────────
@@ -25,6 +26,7 @@ export default function AnalysisScreen() {
   const [techTab, setTechTab] = useState<'overview' | 'sentiment' | 'indicators' | 'charts' | 'events'>('overview');
   const [techData, setTechData] = useState<any>(null);
   const [techLoading, setTechLoading] = useState(false);
+  const [liveQuote, setLiveQuote] = useState<{ price: string; change: string; isUp: boolean } | null>(null);
 
   // ─── COLORS ───────────────────────────────────────────────
   const colors = {
@@ -117,7 +119,20 @@ export default function AnalysisScreen() {
     // fetchTechnicalData();
     setTechData(mockTechData);
     const timer = setTimeout(() => setLoading(false), 2000);
-    return () => clearTimeout(timer);
+
+    // Real price for the header from backend/server.py (analysis cards below are still demo data)
+    let cancelled = false;
+    setLiveQuote(null);
+    fetch(`${API_URL}/stock?symbol=${encodeURIComponent(stockName)}&range=1D`)
+      .then(res => res.json())
+      .then(data => {
+        if (!cancelled && !data.error) {
+          setLiveQuote({ price: data.price, change: data.change_percent, isUp: data.is_up });
+        }
+      })
+      .catch(() => {}); // Backend offline: header falls back to demo values
+
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [stockName]);
 
   // ─── FETCH TECHNICAL DATA (for when backend is ready) ─────
@@ -189,14 +204,23 @@ export default function AnalysisScreen() {
 
       {/* ═══════ HEADER ═══════ */}
       <View style={{ backgroundColor: colors.header, paddingTop: 60, paddingBottom: 32, paddingHorizontal: 20 }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 16 }}>
+        <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))} style={{ marginBottom: 16 }}>
           <Text style={{ color: 'white', fontSize: 16, fontWeight: '600' }}>← Back</Text>
         </TouchableOpacity>
         <Text style={{ fontSize: 32, fontWeight: 'bold', color: 'white', marginBottom: 4 }}>{stockName}</Text>
-        <Text style={{ fontSize: 40, fontWeight: 'bold', color: 'white', marginBottom: 4 }}>{mockData.price}</Text>
+        <Text style={{ fontSize: 40, fontWeight: 'bold', color: 'white', marginBottom: 4 }}>{liveQuote ? liveQuote.price : mockData.price}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ fontSize: 18, color: '#34D399', fontWeight: '600' }}>{mockData.change}</Text>
-          <Text style={{ fontSize: 16, color: '#DDD6FE', marginLeft: 8 }}>{mockData.changeAmount} Today</Text>
+          {liveQuote ? (
+            <>
+              <Text style={{ fontSize: 18, color: liveQuote.isUp ? '#34D399' : '#F87171', fontWeight: '600' }}>{liveQuote.change}</Text>
+              <Text style={{ fontSize: 16, color: '#DDD6FE', marginLeft: 8 }}>Today</Text>
+            </>
+          ) : (
+            <>
+              <Text style={{ fontSize: 18, color: '#34D399', fontWeight: '600' }}>{mockData.change}</Text>
+              <Text style={{ fontSize: 16, color: '#DDD6FE', marginLeft: 8 }}>{mockData.changeAmount} Today (demo)</Text>
+            </>
+          )}
         </View>
       </View>
 
@@ -472,7 +496,7 @@ export default function AnalysisScreen() {
                   <Text style={{ fontSize: 12, color: colors.subText, lineHeight: 20 }}>
                     In simple words: {verdict.buys} out of 11 indicators suggest buying. The stock recently formed a{' '}
                     <Text style={{ color: techData.candle.type === 'bullish' ? '#10B981' : '#EF4444', fontWeight: '600' }}>{techData.candle.latest}</Text> pattern.
-                    It's trading {techData.price > techData.SMA50 ? 'above' : 'below'} its 50-day average and{' '}
+                    It&apos;s trading {techData.price > techData.SMA50 ? 'above' : 'below'} its 50-day average and{' '}
                     {techData.price > techData.SMA200 ? 'above' : 'below'} the 200-day average.
                     The price is between support at ₹{techData.support.S1} and resistance at ₹{techData.resistance.R1}.
                   </Text>
