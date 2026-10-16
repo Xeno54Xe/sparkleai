@@ -1,6 +1,6 @@
-# Sparkle AI
+# sparkle-app
 
-AI-assisted stock research app for Indian (NSE) beginners — Expo / React Native frontend + Flask backend.
+The Sparkle AI app: AI-assisted stock research for Indian (NSE) beginners — Expo / React Native frontend + Flask backend.
 
 ## Running locally
 

@@ -14,7 +14,7 @@ export default function LoginScreen() {
     androidClientId: 'YOUR_ANDROID_ID',
     iosClientId: '598470788920-53f9vepluh6ecsudb2j2lo39dtelrstn.apps.googleusercontent.com',
     webClientId: '598470788920-m7tq46co87ro72tt6f3m46l04d1jk08d3.apps.googleusercontent.com',
-    redirectUri: 'https://auth.expo.io/@vanshdhillon/sparkle-ai'
+    redirectUri: 'https://auth.expo.io/@vanshdhillon/sparkle-app'
   });
 
   const getUserInfo = async (token: string) => {
